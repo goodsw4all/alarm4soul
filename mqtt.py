@@ -1,11 +1,13 @@
-from google_speech import Speech
 import paho.mqtt.client as mqtt
 from yeelight import Bulb
+import subprocess
+from gtts import gTTS
 
 HOST_ADDRESS = '127.0.0.1'
 TOPIC_TALK = 'home/talk2soul'
 TOPIC_BULB1_COMMAND = 'home/bulb/soul_bed/command'
 TOPIC_BULB1_STATUS = 'home/bulb/soul_bed/status'
+TOPIC_MAGIC_CHARM = 'magic/charm'
 
 class MQTTManager(mqtt.Client):
     def __init__(self, board, bulb_address, led,
@@ -23,6 +25,7 @@ class MQTTManager(mqtt.Client):
         print("Connected with result code " + str(rc))
         self.subscribe(TOPIC_TALK)
         self.subscribe(TOPIC_BULB1_COMMAND)
+        self.subscribe(TOPIC_MAGIC_CHARM)
         print(self.bulb.get_properties())
 
     def on_message(self, mqttc, userdata, msg):
@@ -31,11 +34,16 @@ class MQTTManager(mqtt.Client):
 
         if msg.topic == TOPIC_TALK:
             print("Talk to Soul!!! " + cmd)
-            lang = "ko"
-            speech = Speech(cmd, lang)
-            sox_effects = ("speed", "1.2")
-            speech.play(sox_effects)
-
+            tts_ko = gTTS(cmd, lang='ko')
+            with open('/tmp/voice.mp3', 'wb') as f:
+                tts_ko.write_to_fp(f)
+            voice = 'mplayer /tmp/voice.mp3'.split()
+            ret = subprocess.call(voice)
+        elif msg.topic == TOPIC_MAGIC_CHARM:
+            print('Magic charm', msg)
+            if cmd == "run":
+                sound_effect = 'mplayer /home/pi/Music/magic_chime.wav'.split()
+                ret = subprocess.call(sound_effect)
         elif msg.topic == TOPIC_BULB1_COMMAND:
             if cmd == "lighton":
                 self.bulb.turn_on()
@@ -62,7 +70,6 @@ class MQTTManager(mqtt.Client):
             elif cmd.startswith("ct"):
                 args = cmd.split()
                 temp = int(args[1])
-
                 self.bulb.set_color_temp(temp)
             elif cmd.startswith("status"):
                 props = self.bulb.get_properties()
@@ -83,7 +90,3 @@ class MQTTManager(mqtt.Client):
         self.username_pw_set('homeiot', 'homeiot0901')
         self.connect(host=HOST_ADDRESS, port=1883, keepalive=60)
         self.loop_start()
-
-
-
-

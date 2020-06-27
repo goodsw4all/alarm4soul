@@ -2,6 +2,7 @@ from mqtt import MQTTManager
 from aiy.board import Board, Led
 import aiy.voice.tts
 
+
 class Talk2Soul:
     def __init__(self) -> None:
         super().__init__()
